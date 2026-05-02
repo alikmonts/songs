@@ -187,8 +187,19 @@ function syncPlaybackState() {
 }
 
 /** iOS часто показує кнопки «попередній / наступний» лише після валідного position state. */
+/** На iPhone/iPad WebKit часто показує лише ±10 с, якщо є position state; без нього частіше з’являються track-кнопки. */
+function isAppleTouchDevice() {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent || "";
+  if (/iPhone|iPod|iPad/i.test(ua)) return true;
+  if (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) return true;
+  return false;
+}
+
 function syncMediaSessionPosition() {
   if (!("mediaSession" in navigator)) return;
+  /* Не оновлюємо position на iOS — інакше замість |◀◀ ▶▶| лишаються лише «10 с» (обмеження WebKit). */
+  if (isAppleTouchDevice()) return;
   const d = audio.duration;
   if (!Number.isFinite(d) || d <= 0) return;
   try {
@@ -202,8 +213,9 @@ function syncMediaSessionPosition() {
   }
 }
 
-function setupMediaSessionActions() {
+function registerMediaSessionActionHandlers() {
   if (!("mediaSession" in navigator)) return;
+  const apple = isAppleTouchDevice();
   try {
     navigator.mediaSession.setActionHandler("play", () => {
       audio.play().catch(() => {});
@@ -221,6 +233,25 @@ function setupMediaSessionActions() {
       audio.pause();
       audio.currentTime = 0;
     });
+    if (apple) {
+      /*
+       * У Control Center залишаються піктограми «10», але це саме seek*-події.
+       * Переназначаємо на трек (як у David Bushell / обхід WebKit).
+       */
+      navigator.mediaSession.setActionHandler("seekbackward", () => {
+        prevTrack();
+      });
+      navigator.mediaSession.setActionHandler("seekforward", () => {
+        nextTrack();
+      });
+    } else {
+      try {
+        navigator.mediaSession.setActionHandler("seekbackward", null);
+        navigator.mediaSession.setActionHandler("seekforward", null);
+      } catch (_) {
+        /* ignore */
+      }
+    }
   } catch (_) {
     /* ignore */
   }
@@ -397,7 +428,23 @@ function preventPinchZoom() {
 
 function wire() {
   preventPinchZoom();
-  setupMediaSessionActions();
+  registerMediaSessionActionHandlers();
+
+  audio.addEventListener(
+    "playing",
+    () => {
+      registerMediaSessionActionHandlers();
+      if (!("mediaSession" in navigator)) return;
+      if (isAppleTouchDevice()) {
+        try {
+          navigator.mediaSession.setPositionState(null);
+        } catch (_) {
+          /* ignore */
+        }
+      }
+    },
+    { passive: true }
+  );
 
   btnPlay.addEventListener("click", () => {
     const has = Boolean(audio.src || audio.currentSrc);
