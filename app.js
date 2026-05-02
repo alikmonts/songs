@@ -1,4 +1,4 @@
-const STATE_KEY = "papoule_player_v1";
+const STATE_KEY = "arisongs_player_v1";
 const COUNTS_KEY = "papoule_listen_counts_v1";
 const THRESHOLD_SEC = 15;
 
@@ -43,8 +43,16 @@ function fmtTime(sec) {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+/** Кодує кожен сегмент шляху — кириличні імена mp3 на GitHub Pages інакше дають 404. */
 function assetUrl(rel) {
-  return new URL(rel, window.location.href).href;
+  const root = new URL("./", window.location.href);
+  const path = String(rel)
+    .replace(/^\.\//, "")
+    .split("/")
+    .filter(Boolean)
+    .map(encodeURIComponent)
+    .join("/");
+  return path ? new URL(path, root).href : root.href;
 }
 
 function loadCounts() {
@@ -119,10 +127,20 @@ function currentTrack() {
   return data.tracks[idx] || null;
 }
 
+/** idx === 0 не можна перевіряти як if (st.idx). Підтримуємо idx з localStorage як число або "0". */
+function validSavedIdx(st) {
+  if (!st) return false;
+  const i = Number(st.idx);
+  if (!Number.isInteger(i)) return false;
+  if (i < 0 || i >= data.tracks.length) return false;
+  return Boolean(data.tracks[i]);
+}
+
 function setUiForTrack(track, { withCover = true } = {}) {
   if (!track) return;
   npTitle.textContent = track.title;
   npArtist.textContent = track.artist || "";
+  document.title = `${track.title} — AriSongs`;
   tEnd.textContent = fmtTime(track.durationSec || 0);
   if (withCover) {
     if (track.cover) {
@@ -268,11 +286,24 @@ function updatePlayButton() {
   btnPlay.setAttribute("aria-label", on ? "Пауза" : "Відтворити");
 }
 
+/** iOS Safari часто ігнорує лише viewport user-scalable=no — блокуємо pinch-zoom (gesture*). */
+function preventPinchZoom() {
+  const block = (e) => {
+    e.preventDefault();
+  };
+  const opts = { passive: false };
+  document.addEventListener("gesturestart", block, opts);
+  document.addEventListener("gesturechange", block, opts);
+  document.addEventListener("gestureend", block, opts);
+}
+
 function wire() {
+  preventPinchZoom();
+
   btnPlay.addEventListener("click", () => {
     if (!audio.src) {
       const st = loadState();
-      if (st && typeof st.idx === "number" && data.tracks[st.idx]) {
+      if (validSavedIdx(st)) {
         idx = st.idx;
       }
       const tr = currentTrack();
@@ -284,7 +315,7 @@ function wire() {
         audio.removeEventListener("loadedmetadata", onMeta);
         const st2 = loadState();
         const t0 =
-          st2 && st2.idx === idx && typeof st2.t === "number" ? st2.t : 0;
+          validSavedIdx(st2) && st2.idx === idx && typeof st2.t === "number" ? st2.t : 0;
         if (t0 > 0 && Number.isFinite(audio.duration) && t0 < audio.duration - 0.25) {
           audio.currentTime = t0;
         }
@@ -351,6 +382,12 @@ function wire() {
     paintSeekBar();
   });
 
+  audio.addEventListener("error", () => {
+    if (audio.error && currentTrack()) {
+      npTitle.textContent = `${currentTrack().title} (помилка завантаження)`;
+    }
+  });
+
   seek.addEventListener("input", () => {
     const d = audio.duration;
     if (!Number.isFinite(d) || d <= 0) return;
@@ -378,12 +415,13 @@ async function boot() {
   const res = await fetch(new URL("./tracks.json", import.meta.url), { cache: "no-store" });
   data = await res.json();
   if (!data.tracks || !data.tracks.length) {
+    document.title = "AriSongs";
     npTitle.textContent = "Немає треків";
     return;
   }
 
   const st = loadState();
-  if (st && typeof st.idx === "number" && data.tracks[st.idx]) {
+  if (validSavedIdx(st)) {
     idx = st.idx;
   }
 
@@ -397,5 +435,6 @@ async function boot() {
 }
 
 boot().catch(() => {
+  document.title = "AriSongs";
   npTitle.textContent = "Не вдалося завантажити tracks.json";
 });

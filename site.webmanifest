@@ -1,7 +1,7 @@
 {
-  "name": "papoule — пісні",
-  "short_name": "пісні",
-  "description": "Плейлист papoule",
+  "name": "AriSongs",
+  "short_name": "AriSongs",
+  "description": "AriSongs",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

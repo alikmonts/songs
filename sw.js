@@ -1,4 +1,4 @@
-const CACHE = "papoule-songs-v2";
+const CACHE = "arisongs-v3";
 
 const PRECACHE_URLS = [
   "./index.html",
@@ -38,6 +38,20 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
+
+  const url = new URL(request.url);
+  const isAudio =
+    url.pathname.endsWith(".mp3") ||
+    url.pathname.endsWith(".m4a") ||
+    url.pathname.endsWith(".ogg");
+
+  /* Аудіо завжди з мережі, щоб не закешувати зламану відповідь і не ламати перший трек */
+  if (isAudio) {
+    event.respondWith(
+      fetch(request).catch(() => caches.match(request))
+    );
+    return;
+  }
 
   event.respondWith(
     caches.match(request).then((cached) => {
