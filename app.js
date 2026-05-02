@@ -9,6 +9,7 @@ let saveTimer = null;
 let lastTickTime = null;
 let listenedSec = 0;
 let countedThisRound = false;
+let lastPositionSyncMs = 0;
 
 const audio = document.getElementById("audio");
 const cover = document.getElementById("cover");
@@ -152,6 +153,110 @@ function setUiForTrack(track, { withCover = true } = {}) {
       cover.alt = "";
     }
   }
+  syncMediaSession(track);
+}
+
+function syncMediaSession(tr) {
+  if (!tr || !("mediaSession" in navigator)) return;
+  const art = [];
+  if (tr.cover) {
+    art.push({ src: assetUrl(tr.cover), sizes: "512x512", type: "image/jpeg" });
+  }
+  try {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: tr.title,
+      artist: tr.artist || "",
+      album: "AriSongs",
+      artwork: art,
+    });
+  } catch (_) {
+    /* ignore */
+  }
+}
+
+function syncPlaybackState() {
+  if (!("mediaSession" in navigator)) return;
+  try {
+    navigator.mediaSession.playbackState = audio.paused ? "paused" : "playing";
+  } catch (_) {
+    /* ignore */
+  }
+}
+
+/** iOS часто показує кнопки «попередній / наступний» лише після валідного position state. */
+function syncMediaSessionPosition() {
+  if (!("mediaSession" in navigator)) return;
+  const d = audio.duration;
+  if (!Number.isFinite(d) || d <= 0) return;
+  try {
+    navigator.mediaSession.setPositionState({
+      duration: d,
+      playbackRate: audio.playbackRate || 1,
+      position: Math.min(d, Math.max(0, audio.currentTime || 0)),
+    });
+  } catch (_) {
+    /* ignore */
+  }
+}
+
+function setupMediaSessionActions() {
+  if (!("mediaSession" in navigator)) return;
+  try {
+    navigator.mediaSession.setActionHandler("play", () => {
+      audio.play().catch(() => {});
+    });
+    navigator.mediaSession.setActionHandler("pause", () => {
+      audio.pause();
+    });
+    navigator.mediaSession.setActionHandler("previoustrack", () => {
+      prevTrack();
+    });
+    navigator.mediaSession.setActionHandler("nexttrack", () => {
+      nextTrack();
+    });
+    navigator.mediaSession.setActionHandler("stop", () => {
+      audio.pause();
+      audio.currentTime = 0;
+    });
+  } catch (_) {
+    /* ignore */
+  }
+}
+
+/**
+ * Запуск відтворення після зміни src.
+ * Спочатку реєструємо слухачі, потім load() — інакше loadedmetadata встигає вистрілити до підписки (перший трек мовчить).
+ * Негайний play() після load() зберігає ланцюг user gesture на iOS.
+ */
+function playWhenAudioReady(resetTime) {
+  let settled = false;
+  const cleanup = () => {
+    audio.removeEventListener("loadedmetadata", tryPlay);
+    audio.removeEventListener("canplay", tryPlay);
+    clearTimeout(fallbackTimer);
+  };
+  const onPlayed = () => {
+    if (settled) return;
+    settled = true;
+    cleanup();
+    syncPlaybackState();
+    syncMediaSessionPosition();
+  };
+  const tryPlay = () => {
+    if (settled) return;
+    if (resetTime) audio.currentTime = 0;
+    const p = audio.play();
+    if (p !== undefined) {
+      p.then(onPlayed).catch(() => {});
+    } else {
+      onPlayed();
+    }
+  };
+  audio.addEventListener("loadedmetadata", tryPlay);
+  audio.addEventListener("canplay", tryPlay);
+  const fallbackTimer = setTimeout(() => tryPlay(), 2200);
+  audio.load();
+  tryPlay();
 }
 
 const PLAYING_ICON_SVG = `<svg class="track__thumb-svg" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>`;
@@ -239,14 +344,7 @@ function playIndex(i) {
   setUiForTrack(tr);
   loadTrackSource(tr);
   renderPlaylist();
-
-  const afterMeta = () => {
-    audio.removeEventListener("loadedmetadata", afterMeta);
-    audio.currentTime = 0;
-    audio.play().catch(() => {});
-  };
-  audio.addEventListener("loadedmetadata", afterMeta);
-  audio.load();
+  playWhenAudioReady(true);
 }
 
 function nextTrack() {
@@ -260,14 +358,10 @@ function prevTrack() {
 function togglePlay() {
   const tr = currentTrack();
   if (!tr) return;
-  if (!audio.src) {
+  const has = Boolean(audio.src || audio.currentSrc);
+  if (!has) {
     loadTrackSource(tr);
-    const onMeta = () => {
-      audio.removeEventListener("loadedmetadata", onMeta);
-      audio.play().catch(() => {});
-    };
-    audio.addEventListener("loadedmetadata", onMeta);
-    audio.load();
+    playWhenAudioReady(false);
     return;
   }
   if (audio.paused) {
@@ -281,7 +375,8 @@ const ICON_PLAY = `<svg class="dock-icon dock-icon--lg" viewBox="0 0 24 24" aria
 const ICON_PAUSE = `<svg class="dock-icon dock-icon--lg" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
 
 function updatePlayButton() {
-  const on = !audio.paused && audio.src;
+  const hasMedia = Boolean(audio.src || audio.currentSrc);
+  const on = !audio.paused && hasMedia;
   btnPlay.innerHTML = on ? ICON_PAUSE : ICON_PLAY;
   btnPlay.setAttribute("aria-label", on ? "Пауза" : "Відтворити");
 }
@@ -299,9 +394,11 @@ function preventPinchZoom() {
 
 function wire() {
   preventPinchZoom();
+  setupMediaSessionActions();
 
   btnPlay.addEventListener("click", () => {
-    if (!audio.src) {
+    const has = Boolean(audio.src || audio.currentSrc);
+    if (!has) {
       const st = loadState();
       if (validSavedIdx(st)) {
         idx = st.idx;
@@ -311,18 +408,48 @@ function wire() {
       setUiForTrack(tr);
       renderPlaylist();
       loadTrackSource(tr);
-      const onMeta = () => {
+      let settled = false;
+      let resumeApplied = false;
+      const cleanup = () => {
         audio.removeEventListener("loadedmetadata", onMeta);
+        audio.removeEventListener("canplay", tryPlay);
+        clearTimeout(fallbackTimer);
+      };
+      const applyResume = () => {
+        if (resumeApplied) return;
+        resumeApplied = true;
         const st2 = loadState();
         const t0 =
           validSavedIdx(st2) && st2.idx === idx && typeof st2.t === "number" ? st2.t : 0;
         if (t0 > 0 && Number.isFinite(audio.duration) && t0 < audio.duration - 0.25) {
           audio.currentTime = t0;
         }
-        audio.play().catch(() => {});
+      };
+      const onPlayed = () => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        syncPlaybackState();
+        syncMediaSessionPosition();
+      };
+      const tryPlay = () => {
+        if (settled) return;
+        const p = audio.play();
+        if (p !== undefined) {
+          p.then(onPlayed).catch(() => {});
+        } else {
+          onPlayed();
+        }
+      };
+      const onMeta = () => {
+        applyResume();
+        tryPlay();
       };
       audio.addEventListener("loadedmetadata", onMeta);
+      audio.addEventListener("canplay", tryPlay);
+      const fallbackTimer = setTimeout(() => tryPlay(), 2200);
       audio.load();
+      tryPlay();
       return;
     }
     togglePlay();
@@ -351,22 +478,31 @@ function wire() {
       tCur.textContent = fmtTime(c);
     }
     paintSeekBar();
+    const now = Date.now();
+    if (now - lastPositionSyncMs > 850) {
+      lastPositionSyncMs = now;
+      syncMediaSessionPosition();
+    }
     saveStateSoon();
   });
 
   audio.addEventListener("play", () => {
     lastTickTime = audio.currentTime;
     updatePlayButton();
+    syncPlaybackState();
   });
 
   audio.addEventListener("pause", () => {
     lastTickTime = null;
     updatePlayButton();
+    syncPlaybackState();
     saveStateSoon();
   });
 
   audio.addEventListener("seeked", () => {
     lastTickTime = audio.currentTime;
+    lastPositionSyncMs = 0;
+    syncMediaSessionPosition();
     if (audio.currentTime < 1.5) {
       listenedSec = 0;
       countedThisRound = false;
@@ -380,6 +516,8 @@ function wire() {
 
   audio.addEventListener("loadedmetadata", () => {
     paintSeekBar();
+    lastPositionSyncMs = 0;
+    syncMediaSessionPosition();
   });
 
   audio.addEventListener("error", () => {

@@ -1,4 +1,4 @@
-const CACHE = "arisongs-v3";
+const CACHE = "arisongs-v4";
 
 const PRECACHE_URLS = [
   "./index.html",
