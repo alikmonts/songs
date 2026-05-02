@@ -44,14 +44,17 @@ function fmtTime(sec) {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-/** Кодує кожен сегмент шляху — кириличні імена mp3 на GitHub Pages інакше дають 404. */
+/**
+ * Кодує кожен сегмент шляху. NFC перед encode — інакше NFD-імена (напр. «Мой» = и + combining)
+ * дають інший %XX ніж файл на GitHub Pages → 404 лише для першого треку.
+ */
 function assetUrl(rel) {
   const root = new URL("./", window.location.href);
   const path = String(rel)
     .replace(/^\.\//, "")
     .split("/")
     .filter(Boolean)
-    .map(encodeURIComponent)
+    .map((seg) => encodeURIComponent(seg.normalize("NFC")))
     .join("/");
   return path ? new URL(path, root).href : root.href;
 }
