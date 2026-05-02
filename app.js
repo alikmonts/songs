@@ -186,8 +186,7 @@ function syncPlaybackState() {
   }
 }
 
-/** iOS часто показує кнопки «попередній / наступний» лише після валідного position state. */
-/** На iPhone/iPad WebKit часто показує лише ±10 с, якщо є position state; без нього частіше з’являються track-кнопки. */
+/** iPhone/iPad: не оновлюємо position state — інакше WebKit часто лишає лише seek ±10 с замість треку. */
 function isAppleTouchDevice() {
   if (typeof navigator === "undefined") return false;
   const ua = navigator.userAgent || "";
@@ -233,21 +232,19 @@ function registerMediaSessionActionHandlers() {
       audio.pause();
       audio.currentTime = 0;
     });
+    /*
+     * Якщо зареєструвати seekbackward/seekforward, iOS показує саме ±10 с, а не |◀◀ ▶▶|.
+     * На Apple явно знімаємо seek*, лишаємо лише previoustrack/nexttrack.
+     */
+    try {
+      navigator.mediaSession.setActionHandler("seekbackward", null);
+      navigator.mediaSession.setActionHandler("seekforward", null);
+    } catch (_) {
+      /* ignore */
+    }
     if (apple) {
-      /*
-       * У Control Center залишаються піктограми «10», але це саме seek*-події.
-       * Переназначаємо на трек (як у David Bushell / обхід WebKit).
-       */
-      navigator.mediaSession.setActionHandler("seekbackward", () => {
-        prevTrack();
-      });
-      navigator.mediaSession.setActionHandler("seekforward", () => {
-        nextTrack();
-      });
-    } else {
       try {
-        navigator.mediaSession.setActionHandler("seekbackward", null);
-        navigator.mediaSession.setActionHandler("seekforward", null);
+        navigator.mediaSession.setActionHandler("seekto", null);
       } catch (_) {
         /* ignore */
       }
@@ -433,14 +430,22 @@ function wire() {
   audio.addEventListener(
     "playing",
     () => {
-      registerMediaSessionActionHandlers();
-      if (!("mediaSession" in navigator)) return;
-      if (isAppleTouchDevice()) {
-        try {
-          navigator.mediaSession.setPositionState(null);
-        } catch (_) {
-          /* ignore */
+      const run = () => {
+        registerMediaSessionActionHandlers();
+        if (!("mediaSession" in navigator)) return;
+        if (isAppleTouchDevice()) {
+          try {
+            navigator.mediaSession.setPositionState(null);
+          } catch (_) {
+            /* ignore */
+          }
         }
+      };
+      run();
+      /* iOS: повторна реєстрація в наступному тіку часто потрібна, щоб з’явились track-кнопки. */
+      if (isAppleTouchDevice()) {
+        setTimeout(run, 0);
+        setTimeout(run, 120);
       }
     },
     { passive: true }
