@@ -487,6 +487,8 @@ function wire() {
   });
 
   audio.addEventListener("play", () => {
+    const tr = currentTrack();
+    if (tr) npTitle.textContent = tr.title;
     lastTickTime = audio.currentTime;
     updatePlayButton();
     syncPlaybackState();
@@ -521,9 +523,12 @@ function wire() {
   });
 
   audio.addEventListener("error", () => {
-    if (audio.error && currentTrack()) {
-      npTitle.textContent = `${currentTrack().title} (помилка завантаження)`;
-    }
+    const err = audio.error;
+    const tr = currentTrack();
+    if (!err || !tr) return;
+    /* Під час load()/зміни src часто прилітає MEDIA_ERR_ABORTED — це не справжня помилка файлу. */
+    if (err.code === MediaError.MEDIA_ERR_ABORTED) return;
+    npTitle.textContent = `${tr.title} (помилка завантаження)`;
   });
 
   seek.addEventListener("input", () => {
