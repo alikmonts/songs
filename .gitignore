@@ -1,2 +1,4 @@
 node_modules/
 .DS_Store
+# Вихідні mp3 лише локально; на GitHub — media/*.bin після npm run build
+mp3/

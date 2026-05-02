@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -7,6 +8,7 @@ import sharp from "sharp";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, "..");
 const MP3_DIR = path.join(ROOT, "mp3");
+const MEDIA_DIR = path.join(ROOT, "media");
 const COVERS_DIR = path.join(ROOT, "covers");
 const ICONS_DIR = path.join(ROOT, "icons");
 
@@ -64,13 +66,21 @@ async function buildPwaIcons() {
 
 async function main() {
   fs.mkdirSync(COVERS_DIR, { recursive: true });
+  fs.mkdirSync(MEDIA_DIR, { recursive: true });
   const files = listMp3Files();
   const tracks = [];
+  const emittedBin = new Set();
   let idx = 0;
   for (const file of files) {
     idx += 1;
     const id = `t${String(idx).padStart(2, "0")}`;
     const abs = path.join(MP3_DIR, file);
+    const raw = fs.readFileSync(abs);
+    const hash = crypto.createHash("sha256").update(raw).digest("hex").slice(0, 32);
+    const binName = `${hash}.bin`;
+    const binAbs = path.join(MEDIA_DIR, binName);
+    fs.writeFileSync(binAbs, raw);
+    emittedBin.add(binName);
     const meta = await parseFile(abs);
     const common = meta.common;
     const title = (common.title || path.basename(file, ".mp3")).trim();
@@ -93,7 +103,8 @@ async function main() {
 
     tracks.push({
       id,
-      file: `mp3/${file}`.replace(/\\/g, "/"),
+      file: `media/${binName}`.replace(/\\/g, "/"),
+      mime: "audio/mpeg",
       title,
       artist,
       durationSec,
@@ -101,6 +112,14 @@ async function main() {
       cover: coverRel,
     });
     console.log("Трек", id, "—", title, artist ? `(${artist})` : "");
+  }
+
+  for (const name of fs.readdirSync(MEDIA_DIR)) {
+    if (!name.endsWith(".bin")) continue;
+    if (!emittedBin.has(name)) {
+      fs.unlinkSync(path.join(MEDIA_DIR, name));
+      console.log("видалено застарілий", path.join("media", name));
+    }
   }
 
   const outJson = path.join(ROOT, "tracks.json");

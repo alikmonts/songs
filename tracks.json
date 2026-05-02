@@ -1,9 +1,10 @@
 {
-  "generatedAt": "2026-05-02T11:35:10.062Z",
+  "generatedAt": "2026-05-02T13:06:26.009Z",
   "tracks": [
     {
       "id": "t01",
-      "file": "mp3/01-Мой свет.mp3",
+      "file": "media/0e6512d4f4afbbc227af74372dd1bbe4.bin",
+      "mime": "audio/mpeg",
       "title": "Мой свет",
       "artist": "papoule",
       "durationSec": 217,
@@ -12,7 +13,8 @@
     },
     {
       "id": "t02",
-      "file": "mp3/02-pARIs.mp3",
+      "file": "media/281d273b04f35a0e0fb6d51b1f7c3096.bin",
+      "mime": "audio/mpeg",
       "title": "pARIs",
       "artist": "papoule",
       "durationSec": 173.9,
@@ -21,7 +23,8 @@
     },
     {
       "id": "t03",
-      "file": "mp3/03-Petit cochon.mp3",
+      "file": "media/3af0594f314fb1ea2de04a1f28e64ee1.bin",
+      "mime": "audio/mpeg",
       "title": "Petit cochon",
       "artist": "papoule",
       "durationSec": 98.5,
@@ -30,7 +33,8 @@
     },
     {
       "id": "t04",
-      "file": "mp3/04-Моя звезда.mp3",
+      "file": "media/68eb49c6fb559861228ad02b579bc3b9.bin",
+      "mime": "audio/mpeg",
       "title": "Моя звезда",
       "artist": "papoule",
       "durationSec": 159.9,
@@ -39,7 +43,8 @@
     },
     {
       "id": "t05",
-      "file": "mp3/05-Там где ты...mp3",
+      "file": "media/68a61acc450bbf0d50176a6977f2b812.bin",
+      "mime": "audio/mpeg",
       "title": "Там где ты..",
       "artist": "papoule",
       "durationSec": 180,

@@ -10,6 +10,8 @@ let lastTickTime = null;
 let listenedSec = 0;
 let countedThisRound = false;
 let lastPositionSyncMs = 0;
+/** Після fetch обфускованого .bin — відкликати при зміні треку. */
+let audioObjectUrl = null;
 
 const audio = document.getElementById("audio");
 const cover = document.getElementById("cover");
@@ -362,18 +364,51 @@ function closeLyrics() {
   modalRoot.classList.add("hidden");
 }
 
-function loadTrackSource(track) {
-  audio.src = assetUrl(track.file);
+/**
+ * Джерела з build: media/<sha32>.bin (байти як у mp3, ім’я не видає формат).
+ * Старі tracks.json з mp3/ — лишаємо прямий src.
+ */
+async function loadTrackSource(track) {
+  if (!track || !track.file) return;
+  const rel = String(track.file);
+  const mime = typeof track.mime === "string" && track.mime ? track.mime : "audio/mpeg";
+  if (/\.(mp3|m4a|ogg)$/i.test(rel)) {
+    if (audioObjectUrl) {
+      URL.revokeObjectURL(audioObjectUrl);
+      audioObjectUrl = null;
+    }
+    audio.src = assetUrl(rel);
+    return;
+  }
+  const url = assetUrl(rel);
+  const res = await fetch(url);
+  if (!res.ok) {
+    npTitle.textContent = `${track.title} (помилка завантаження)`;
+    throw new Error("audio fetch");
+  }
+  const buf = await res.arrayBuffer();
+  if (audioObjectUrl) {
+    URL.revokeObjectURL(audioObjectUrl);
+    audioObjectUrl = null;
+  }
+  const blob = new Blob([buf], { type: mime });
+  audioObjectUrl = URL.createObjectURL(blob);
+  audio.src = audioObjectUrl;
 }
 
-function playIndex(i) {
+async function playIndex(i) {
   const tracks = data.tracks;
   if (!tracks.length) return;
   idx = (i + tracks.length) % tracks.length;
   const tr = tracks[idx];
   resetListenMeter();
   setUiForTrack(tr);
-  loadTrackSource(tr);
+  try {
+    await loadTrackSource(tr);
+  } catch {
+    renderPlaylist();
+    return;
+  }
   renderPlaylist();
   playWhenAudioReady(true);
 }
@@ -386,12 +421,16 @@ function prevTrack() {
   playIndex(idx - 1);
 }
 
-function togglePlay() {
+async function togglePlay() {
   const tr = currentTrack();
   if (!tr) return;
   const has = Boolean(audio.src || audio.currentSrc);
   if (!has) {
-    loadTrackSource(tr);
+    try {
+      await loadTrackSource(tr);
+    } catch {
+      return;
+    }
     playWhenAudioReady(false);
     return;
   }
@@ -451,7 +490,7 @@ function wire() {
     { passive: true }
   );
 
-  btnPlay.addEventListener("click", () => {
+  btnPlay.addEventListener("click", async () => {
     const has = Boolean(audio.src || audio.currentSrc);
     if (!has) {
       const st = loadState();
@@ -462,7 +501,11 @@ function wire() {
       if (!tr) return;
       setUiForTrack(tr);
       renderPlaylist();
-      loadTrackSource(tr);
+      try {
+        await loadTrackSource(tr);
+      } catch {
+        return;
+      }
       let settled = false;
       let resumeApplied = false;
       const cleanup = () => {

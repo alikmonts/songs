@@ -1,4 +1,4 @@
-const CACHE = "arisongs-v8";
+const CACHE = "arisongs-v9";
 
 const PRECACHE_URLS = [
   "./index.html",
@@ -43,7 +43,8 @@ self.addEventListener("fetch", (event) => {
   const isAudio =
     url.pathname.endsWith(".mp3") ||
     url.pathname.endsWith(".m4a") ||
-    url.pathname.endsWith(".ogg");
+    url.pathname.endsWith(".ogg") ||
+    (url.pathname.includes("/media/") && url.pathname.endsWith(".bin"));
 
   /* Аудіо завжди з мережі, щоб не закешувати зламану відповідь і не ламати перший трек */
   if (isAudio) {
