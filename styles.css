@@ -1,0 +1,478 @@
+:root {
+  --bg: #2d2445;
+  --bg-elev: #3a2f56;
+  --accent: #f5d742;
+  --text: #ffffff;
+  --muted: rgba(255, 255, 255, 0.55);
+  --dock-yellow: #f5d742;
+  --dock-h: 188px;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+}
+
+body {
+  padding: 0;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.app {
+  max-width: 560px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  position: relative;
+}
+
+.scroll-main {
+  padding: max(12px, env(safe-area-inset-top)) 18px
+    calc(var(--dock-h) + env(safe-area-inset-bottom) + 8px);
+}
+
+.cover-wrap {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto 18px;
+  aspect-ratio: 1;
+  max-height: min(50vh, 400px);
+  border-radius: 14px;
+  overflow: hidden;
+  background: #1a1528;
+}
+
+.cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.title-line {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 0;
+}
+
+.title-line__text {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+}
+
+.np-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin: 0 0 6px;
+  line-height: 1.2;
+  color: #fff;
+}
+
+.np-artist {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+/* Як на референсі: іконка + «Текст», без рамки */
+.text-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 4px;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.text-btn:active {
+  opacity: 0.88;
+}
+
+.text-btn__icon {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.text-btn__label {
+  line-height: 1;
+}
+
+.playlist-sep {
+  border: none;
+  height: 1px;
+  margin: 20px 0 0;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+#playlist-section {
+  scroll-margin-top: 12px;
+}
+
+.playlist-block {
+  margin-top: 16px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.track {
+  display: grid;
+  grid-template-columns: 52px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 8px;
+  border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: none;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  width: 100%;
+}
+
+.track--active {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  border-bottom-color: transparent;
+}
+
+.track:last-child {
+  border-bottom: none;
+}
+
+.track__thumb-wrap {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.track__thumb-wrap--empty {
+  background: linear-gradient(145deg, var(--bg-elev) 0%, #1a1528 100%);
+}
+
+.track__thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.track__thumb-icon {
+  display: none;
+  position: absolute;
+  inset: 0;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.42);
+  color: #fff;
+  pointer-events: none;
+}
+
+.track--active .track__thumb-icon {
+  display: flex;
+}
+
+.track__thumb-svg {
+  width: 28px;
+  height: 28px;
+  display: block;
+}
+
+.track__title {
+  font-weight: 600;
+  font-size: 1rem;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.track--active .track__title {
+  color: var(--accent);
+}
+
+.track__main {
+  min-width: 0;
+}
+
+.track__artist {
+  font-size: 0.84rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.track__dur {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Нижня панель: суцільний жовтий, заокруглення зверху */
+.player-dock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 14px 20px max(14px, env(safe-area-inset-bottom));
+  background: var(--dock-yellow);
+  border-radius: 22px 22px 0 0;
+  box-shadow: 0 -6px 32px rgba(0, 0, 0, 0.22);
+}
+
+.dock-times {
+  display: flex;
+  justify-content: space-between;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--bg);
+  margin-bottom: 8px;
+}
+
+.dock-seek-wrap {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  margin: 0 0 4px;
+}
+
+/* Трек 6px; padding дає зону дотику — thumb центрується на лінії (WebKit) */
+.dock-seek {
+  --seek-pct: 0%;
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  padding: 14px 0;
+  box-sizing: content-box;
+  cursor: pointer;
+  background: transparent;
+  outline: none;
+  touch-action: manipulation;
+}
+
+.dock-seek::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(
+    to right,
+    var(--bg) 0%,
+    var(--bg) var(--seek-pct),
+    #ffffff var(--seek-pct),
+    #ffffff 100%
+  );
+}
+
+.dock-seek::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--bg);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  /* 6px трек vs 14px thumb: центр на лінії */
+  margin-top: -4px;
+}
+
+.dock-seek::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: none;
+  border-radius: 50%;
+  background: var(--bg);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+
+.dock-seek::-moz-range-track {
+  height: 6px;
+  border-radius: 3px;
+  background: #ffffff;
+}
+
+.dock-seek::-moz-range-progress {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--bg);
+}
+
+.dock-transport {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+  margin-top: 16px;
+}
+
+.dock-btn {
+  appearance: none;
+  border: none;
+  margin: 0;
+  padding: 0;
+  width: 64px;
+  height: 64px;
+  background: var(--bg);
+  color: var(--accent);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  border-radius: 50%;
+  line-height: 0;
+}
+
+.dock-btn:active {
+  opacity: 0.9;
+  transform: scale(0.97);
+}
+
+.dock-btn:disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.dock-icon {
+  width: 36px;
+  height: 36px;
+  display: block;
+}
+
+.dock-btn--main {
+  width: 84px;
+  height: 84px;
+  flex-shrink: 0;
+}
+
+.dock-btn--main .dock-icon--lg {
+  width: 42px;
+  height: 42px;
+}
+
+/* Modal */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 50;
+  padding: env(safe-area-inset-top) 0 0;
+}
+
+.modal {
+  width: 100%;
+  max-width: 560px;
+  max-height: min(88vh, 720px);
+  background: var(--bg-elev);
+  border-radius: 18px 18px 0 0;
+  padding: 16px 16px max(20px, env(safe-area-inset-bottom));
+  overflow: auto;
+  box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.35);
+}
+
+.modal__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.modal__titles {
+  min-width: 0;
+}
+
+.modal__title {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--accent);
+  line-height: 1.25;
+}
+
+.modal__sub {
+  margin: 4px 0 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.icon-btn {
+  appearance: none;
+  border: none;
+  background: none;
+  color: var(--muted);
+  padding: 8px;
+  cursor: pointer;
+  line-height: 0;
+  border-radius: 8px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.icon-btn:active {
+  color: var(--text);
+}
+
+.lyrics-body {
+  white-space: pre-wrap;
+  font-size: 1.2rem;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+.hidden {
+  display: none !important;
+}

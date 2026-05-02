@@ -1,0 +1,13 @@
+{
+  "name": "songs",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs"
+  },
+  "devDependencies": {
+    "music-metadata": "^11.12.3",
+    "sharp": "^0.34.5"
+  }
+}

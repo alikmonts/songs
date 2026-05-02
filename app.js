@@ -1,0 +1,401 @@
+const STATE_KEY = "papoule_player_v1";
+const COUNTS_KEY = "papoule_listen_counts_v1";
+const THRESHOLD_SEC = 15;
+
+/** @type {{ tracks: Array<Record<string, unknown>> }} */
+let data = { tracks: [] };
+let idx = 0;
+let saveTimer = null;
+let lastTickTime = null;
+let listenedSec = 0;
+let countedThisRound = false;
+
+const audio = document.getElementById("audio");
+const cover = document.getElementById("cover");
+const npTitle = document.getElementById("np-title");
+const npArtist = document.getElementById("np-artist");
+const tCur = document.getElementById("t-cur");
+const tEnd = document.getElementById("t-end");
+const seek = document.getElementById("seek");
+const btnPlay = document.getElementById("btn-play");
+const btnPrev = document.getElementById("btn-prev");
+const btnNext = document.getElementById("btn-next");
+const btnLyricsNow = document.getElementById("btn-lyrics-now");
+const playlistEl = document.getElementById("playlist");
+const modalRoot = document.getElementById("modal-root");
+const modalTitle = document.getElementById("modal-title");
+const modalArtist = document.getElementById("modal-artist");
+const modalLyrics = document.getElementById("modal-lyrics");
+const modalClose = document.getElementById("modal-close");
+
+function paintSeekBar() {
+  const d = audio.duration;
+  const c = audio.currentTime;
+  const pct =
+    Number.isFinite(d) && d > 0 ? Math.min(100, Math.max(0, (c / d) * 100)) : 0;
+  seek.style.setProperty("--seek-pct", `${pct}%`);
+}
+
+function fmtTime(sec) {
+  if (!Number.isFinite(sec) || sec < 0) return "0:00";
+  const s = Math.floor(sec % 60);
+  const m = Math.floor(sec / 60);
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+function assetUrl(rel) {
+  return new URL(rel, window.location.href).href;
+}
+
+function loadCounts() {
+  try {
+    const raw = localStorage.getItem(COUNTS_KEY);
+    if (!raw) return {};
+    const o = JSON.parse(raw);
+    return typeof o === "object" && o ? o : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveCounts(map) {
+  localStorage.setItem(COUNTS_KEY, JSON.stringify(map));
+}
+
+function bumpCount(id) {
+  const m = loadCounts();
+  m[id] = (m[id] || 0) + 1;
+  saveCounts(m);
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STATE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function saveStateSoon() {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    saveTimer = null;
+    const st = {
+      idx,
+      t: audio.currentTime || 0,
+      ts: Date.now(),
+    };
+    localStorage.setItem(STATE_KEY, JSON.stringify(st));
+  }, 400);
+}
+
+function resetListenMeter() {
+  listenedSec = 0;
+  countedThisRound = false;
+  lastTickTime = null;
+}
+
+function onTimeUpdateMeter() {
+  if (audio.paused) return;
+  const ct = audio.currentTime;
+  if (lastTickTime == null) {
+    lastTickTime = ct;
+    return;
+  }
+  const d = ct - lastTickTime;
+  lastTickTime = ct;
+  if (d <= 0 || d > 2) return;
+  listenedSec += d;
+  if (!countedThisRound && listenedSec >= THRESHOLD_SEC) {
+    const t = currentTrack();
+    if (t) bumpCount(t.id);
+    countedThisRound = true;
+  }
+}
+
+function currentTrack() {
+  return data.tracks[idx] || null;
+}
+
+function setUiForTrack(track, { withCover = true } = {}) {
+  if (!track) return;
+  npTitle.textContent = track.title;
+  npArtist.textContent = track.artist || "";
+  tEnd.textContent = fmtTime(track.durationSec || 0);
+  if (withCover) {
+    if (track.cover) {
+      cover.removeAttribute("hidden");
+      cover.src = assetUrl(track.cover);
+      cover.alt = track.title;
+    } else {
+      cover.removeAttribute("src");
+      cover.alt = "";
+    }
+  }
+}
+
+const PLAYING_ICON_SVG = `<svg class="track__thumb-svg" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>`;
+
+function renderPlaylist() {
+  playlistEl.innerHTML = "";
+  data.tracks.forEach((tr, i) => {
+    const row = document.createElement("div");
+    row.className = "track" + (i === idx ? " track--active" : "");
+    row.setAttribute("role", "listitem");
+    row.dataset.index = String(i);
+
+    const thumbWrap = document.createElement("div");
+    thumbWrap.className = "track__thumb-wrap";
+    if (!tr.cover) {
+      thumbWrap.classList.add("track__thumb-wrap--empty");
+    } else {
+      const thumb = document.createElement("img");
+      thumb.className = "track__thumb";
+      thumb.alt = "";
+      thumb.src = assetUrl(tr.cover);
+      thumbWrap.appendChild(thumb);
+    }
+    const iconLayer = document.createElement("span");
+    iconLayer.className = "track__thumb-icon";
+    iconLayer.setAttribute("aria-hidden", "true");
+    iconLayer.innerHTML = PLAYING_ICON_SVG;
+    thumbWrap.appendChild(iconLayer);
+
+    const main = document.createElement("div");
+    main.className = "track__main";
+    const t = document.createElement("div");
+    t.className = "track__title";
+    t.textContent = tr.title;
+    const a = document.createElement("div");
+    a.className = "track__artist";
+    a.textContent = tr.artist || "";
+    main.appendChild(t);
+    main.appendChild(a);
+
+    const dur = document.createElement("div");
+    dur.className = "track__dur";
+    dur.textContent = fmtTime(tr.durationSec || 0);
+
+    row.appendChild(thumbWrap);
+    row.appendChild(main);
+    row.appendChild(dur);
+
+    row.addEventListener("click", () => {
+      if (i === idx) {
+        togglePlay();
+        return;
+      }
+      playIndex(i);
+    });
+
+    playlistEl.appendChild(row);
+  });
+}
+
+function openLyrics(track) {
+  modalRoot.dataset.trackId = track.id;
+  modalTitle.textContent = track.title;
+  modalArtist.textContent = track.artist || "";
+  const text = (track.lyrics || "").trim();
+  modalLyrics.textContent = text || "Тексту ще немає в тегах файлу.";
+  modalRoot.classList.remove("hidden");
+}
+
+function closeLyrics() {
+  delete modalRoot.dataset.trackId;
+  modalRoot.classList.add("hidden");
+}
+
+function loadTrackSource(track) {
+  audio.src = assetUrl(track.file);
+}
+
+function playIndex(i) {
+  const tracks = data.tracks;
+  if (!tracks.length) return;
+  idx = (i + tracks.length) % tracks.length;
+  const tr = tracks[idx];
+  resetListenMeter();
+  setUiForTrack(tr);
+  loadTrackSource(tr);
+  renderPlaylist();
+
+  const afterMeta = () => {
+    audio.removeEventListener("loadedmetadata", afterMeta);
+    audio.currentTime = 0;
+    audio.play().catch(() => {});
+  };
+  audio.addEventListener("loadedmetadata", afterMeta);
+  audio.load();
+}
+
+function nextTrack() {
+  playIndex(idx + 1);
+}
+
+function prevTrack() {
+  playIndex(idx - 1);
+}
+
+function togglePlay() {
+  const tr = currentTrack();
+  if (!tr) return;
+  if (!audio.src) {
+    loadTrackSource(tr);
+    const onMeta = () => {
+      audio.removeEventListener("loadedmetadata", onMeta);
+      audio.play().catch(() => {});
+    };
+    audio.addEventListener("loadedmetadata", onMeta);
+    audio.load();
+    return;
+  }
+  if (audio.paused) {
+    audio.play().catch(() => {});
+  } else {
+    audio.pause();
+  }
+}
+
+const ICON_PLAY = `<svg class="dock-icon dock-icon--lg" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>`;
+const ICON_PAUSE = `<svg class="dock-icon dock-icon--lg" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
+
+function updatePlayButton() {
+  const on = !audio.paused && audio.src;
+  btnPlay.innerHTML = on ? ICON_PAUSE : ICON_PLAY;
+  btnPlay.setAttribute("aria-label", on ? "Пауза" : "Відтворити");
+}
+
+function wire() {
+  btnPlay.addEventListener("click", () => {
+    if (!audio.src) {
+      const st = loadState();
+      if (st && typeof st.idx === "number" && data.tracks[st.idx]) {
+        idx = st.idx;
+      }
+      const tr = currentTrack();
+      if (!tr) return;
+      setUiForTrack(tr);
+      renderPlaylist();
+      loadTrackSource(tr);
+      const onMeta = () => {
+        audio.removeEventListener("loadedmetadata", onMeta);
+        const st2 = loadState();
+        const t0 =
+          st2 && st2.idx === idx && typeof st2.t === "number" ? st2.t : 0;
+        if (t0 > 0 && Number.isFinite(audio.duration) && t0 < audio.duration - 0.25) {
+          audio.currentTime = t0;
+        }
+        audio.play().catch(() => {});
+      };
+      audio.addEventListener("loadedmetadata", onMeta);
+      audio.load();
+      return;
+    }
+    togglePlay();
+  });
+
+  btnNext.addEventListener("click", () => nextTrack());
+  btnPrev.addEventListener("click", () => prevTrack());
+
+  btnLyricsNow.addEventListener("click", () => {
+    const t = currentTrack();
+    if (t) openLyrics(t);
+  });
+
+  modalClose.addEventListener("click", () => closeLyrics());
+  modalRoot.addEventListener("click", (e) => {
+    if (e.target === modalRoot) closeLyrics();
+  });
+
+  audio.addEventListener("timeupdate", () => {
+    onTimeUpdateMeter();
+    const d = audio.duration;
+    const c = audio.currentTime;
+    if (Number.isFinite(d) && d > 0) {
+      seek.max = 1000;
+      seek.value = Math.min(1000, Math.round((c / d) * 1000));
+      tCur.textContent = fmtTime(c);
+    }
+    paintSeekBar();
+    saveStateSoon();
+  });
+
+  audio.addEventListener("play", () => {
+    lastTickTime = audio.currentTime;
+    updatePlayButton();
+  });
+
+  audio.addEventListener("pause", () => {
+    lastTickTime = null;
+    updatePlayButton();
+    saveStateSoon();
+  });
+
+  audio.addEventListener("seeked", () => {
+    lastTickTime = audio.currentTime;
+    if (audio.currentTime < 1.5) {
+      listenedSec = 0;
+      countedThisRound = false;
+    }
+  });
+
+  audio.addEventListener("ended", () => {
+    resetListenMeter();
+    nextTrack();
+  });
+
+  audio.addEventListener("loadedmetadata", () => {
+    paintSeekBar();
+  });
+
+  seek.addEventListener("input", () => {
+    const d = audio.duration;
+    if (!Number.isFinite(d) || d <= 0) return;
+    const v = Number(seek.value) / 1000;
+    audio.currentTime = v * d;
+    paintSeekBar();
+  });
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") saveStateSoon();
+  });
+}
+
+async function boot() {
+  wire();
+
+  if ("serviceWorker" in navigator) {
+    try {
+      await navigator.serviceWorker.register(new URL("./sw.js", import.meta.url));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  const res = await fetch(new URL("./tracks.json", import.meta.url), { cache: "no-store" });
+  data = await res.json();
+  if (!data.tracks || !data.tracks.length) {
+    npTitle.textContent = "Немає треків";
+    return;
+  }
+
+  const st = loadState();
+  if (st && typeof st.idx === "number" && data.tracks[st.idx]) {
+    idx = st.idx;
+  }
+
+  setUiForTrack(data.tracks[idx]);
+  renderPlaylist();
+  updatePlayButton();
+
+  seek.value = 0;
+  tCur.textContent = "0:00";
+  paintSeekBar();
+}
+
+boot().catch(() => {
+  npTitle.textContent = "Не вдалося завантажити tracks.json";
+});
