@@ -5,7 +5,7 @@
   --text: #ffffff;
   --muted: rgba(255, 255, 255, 0.55);
   --dock-yellow: #ffe00e;
-  --dock-h: 200px;
+  --dock-h: 78px;
   --seek-bg: #ec820c;
 
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, sans-serif;
@@ -96,7 +96,7 @@ body {
 }
 
 .np-title {
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 700;
   margin: 0 0 6px;
   line-height: 1.2;
@@ -106,7 +106,7 @@ body {
 .np-artist {
   margin: 0;
   color: var(--bg-elev);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
 }
 
 /* Як на референсі: іконка + «Текст», без рамки */
@@ -183,7 +183,7 @@ body {
 
 .track--active {
   background: rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
+  border-radius: 0;
   border-bottom-color: transparent;
 }
 
@@ -360,7 +360,6 @@ body {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  padding: 0 12px;
 }
 .dock-info {
   display: flex;
@@ -371,8 +370,8 @@ body {
   border: none;
   margin: 0;
   padding: 0;
-  width: 52px;
-  height: 52px;
+  width: 48px;
+  height: 48px;
   color:  var(--bg);
   cursor: pointer;
   display: inline-flex;
@@ -395,14 +394,14 @@ body {
 }
 
 .dock-icon {
-  width: 52px;
-  height: 52px;
+  width: 42px;
+  height: 42px;
   display: block;
 }
 
 .dock-cover-wrap {
-  width: 52px;
-  height: 52px;
+  width:48px;
+  height: 48px;
   display: block;
   margin: 8px 0 0 12px;
 }
