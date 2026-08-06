@@ -84,14 +84,14 @@ body {
   align-items: center;
   margin-bottom: 0;
   width: 100%;
+  padding: 6px 12px 0;
 }
 
 .title-line__text {
   flex: 1;
   min-width: 0;
   text-align: left;
-  padding: 14px;
-
+  padding-left: 14px;
 }
 
 .np-title {
@@ -345,12 +345,13 @@ body {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  padding: 0 6px;
+
 }
 
 .dock-info {
   display: flex;
   justify-content: space-between;
+  flex-direction: column;
 }
 
 .dock-btn {
@@ -406,7 +407,6 @@ body {
   width: 42px;
   height: 42px;
   display: block;
-  margin: 12px 0 0 12px;
 }
 
 .dock-cover {
@@ -521,9 +521,17 @@ body {
     margin: 0;
   }
 
+  .title-line {
+    padding: 12px;
+  }
+
   .dock-transport {
     gap: 14px;
     padding: 0 16px;
+  }
+
+  .dock-info {
+    flex-direction: row;
   }
 
   .playlist-block {
@@ -532,12 +540,7 @@ body {
     margin-top: 0;
   }
 
-  .dock-cover-wrap {
-    width: 48px;
-    height: 48px;
-    margin-top: 8px;
-  }
-
+  .dock-cover-wrap,
   .dock-cover {
     width: 48px;
     height: 48px;
@@ -556,9 +559,17 @@ body {
     margin: 0 auto 36px;
   }
 
+  .title-line {
+    padding: 12px;
+  }
+
   .dock-transport {
     gap: 14px;
     padding: 0 16px;
+  }
+
+  .dock-info {
+    flex-direction: row;
   }
 
   .playlist-block {
@@ -566,12 +577,7 @@ body {
     margin-top: 0;
   }
 
-  .dock-cover-wrap {
-    width: 48px;
-    height: 48px;
-    margin-top: 8px;
-  }
-
+  .dock-cover-wrap,
   .dock-cover {
     width: 48px;
     height: 48px;
@@ -597,9 +603,17 @@ body {
     z-index: 1;
   }
 
+  .title-line {
+    padding: 12px;
+  }
+
   .dock-transport {
     gap: 14px;
     padding: 0 16px;
+  }
+
+  .dock-info {
+    flex-direction: row;
   }
 
   .playlist-block {
@@ -610,12 +624,7 @@ body {
     box-sizing: border-box;
   }
 
-  .dock-cover-wrap {
-    width: 48px;
-    height: 48px;
-    margin-top: 8px;
-  }
-
+  .dock-cover-wrap,
   .dock-cover {
     width: 48px;
     height: 48px;
