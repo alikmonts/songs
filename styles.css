@@ -109,7 +109,6 @@ body {
   font-size: 0.85rem;
 }
 
-/* Як на референсі: іконка + «Текст», без рамки */
 .text-btn {
   flex-shrink: 0;
   display: inline-flex;
@@ -264,7 +263,6 @@ body {
   color: rgba(255, 255, 255, 0.5);
 }
 
-/* Нижня панель: суцільний жовтий, заокруглення зверху */
 .player-dock {
   position: fixed;
   left: 0;
@@ -281,13 +279,6 @@ body {
 
 .dock-times {
   display: none;
-  /*justify-content: space-between;
-  font-variant-numeric: tabular-nums;
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--bg);
-  margin-bottom: 8px;*/
-  
 }
 
 .dock-seek-wrap {
@@ -296,7 +287,6 @@ body {
   margin: 0;
 }
 
-/* Трек 6px; padding дає зону дотику — thumb центрується на лінії (WebKit) */
 .dock-seek {
   --seek-pct: 0%;
   -webkit-appearance: none;
@@ -331,7 +321,6 @@ body {
   height: 6px;
   background: var(--seek-bg);
   box-shadow: none;
-  /* 6px трек vs 14px thumb: центр на лінії */
   margin-top: 0px;
 }
 
