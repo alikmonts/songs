@@ -350,10 +350,12 @@ body {
   justify-content: center;
   gap: 10px;
 }
+
 .dock-info {
   display: flex;
   justify-content: space-between;
 }
+
 .dock-btn {
   appearance: none;
   border: none;
@@ -394,10 +396,11 @@ body {
   display: block;
   margin: 8px 0 0 12px;
 }
+
 .dock-cover{
   border-radius: 6px;
 }
-/* Modal */
+
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -491,6 +494,58 @@ body {
 
 .lyrics-body::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.3);
+}
+
+@media (min-width: 768px) and (orientation: landscape) {
+  .app {
+    max-width: 100%;
+  }
+
+  .scroll-main {
+    display: flex;
+    padding: 36px;
+  }
+
+  .cover-wrap {
+    width: 60vw;
+    margin: 0;
+  }
+
+  .playlist-block {
+    min-width: 40vw;
+    padding: 0 0 0 36px;
+    margin-top: 0;
+  }
+
+  .player-dock {
+    max-width: 100vw;
+  }
+}
+
+@media (min-width: 768px) and (orientation: portrait) {
+  .app {
+    max-width: 100%;
+  }
+
+  .scroll-main {
+    display: flex;
+    flex-direction: column;
+    padding: 36px;
+  }
+
+  .cover-wrap {
+    width: 60vw;
+    margin: 0 auto 36px;
+  }
+
+  .playlist-block {
+    padding: 0;
+    margin-top: 0;
+  }
+
+  .player-dock {
+    max-width: 100vw;
+  }
 }
 
 .hidden {
