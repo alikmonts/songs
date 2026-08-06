@@ -18,6 +18,7 @@ let pendingAutoAdvance = false;
 
 const audio = document.getElementById("audio");
 const cover = document.getElementById("cover");
+const dockCover = document.getElementById("dock-cover");
 const npTitle = document.getElementById("np-title");
 const npArtist = document.getElementById("np-artist");
 const tCur = document.getElementById("t-cur");
@@ -156,9 +157,17 @@ function setUiForTrack(track, { withCover = true } = {}) {
       cover.removeAttribute("hidden");
       cover.src = assetUrl(track.cover);
       cover.alt = track.title;
+      if (dockCover) {
+        dockCover.src = assetUrl(track.cover);
+        dockCover.alt = track.title;
+      }
     } else {
       cover.removeAttribute("src");
       cover.alt = "";
+      if (dockCover) {
+        dockCover.removeAttribute("src");
+        dockCover.alt = "";
+      }
     }
   }
   syncMediaSession(track);

@@ -23,21 +23,6 @@
           <img id="cover" class="cover" alt="" width="512" height="512" />
         </div>
 
-        <div class="title-line">
-          <div class="title-line__text">
-            <p id="np-title" class="np-title">—</p>
-            <p id="np-artist" class="np-artist">—</p>
-          </div>
-          <button id="btn-lyrics-now" type="button" class="text-btn" aria-label="Текст пісні">
-            <svg class="text-btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-              <path d="M8 6h13M8 12h13M8 18h9" />
-            </svg>
-            <span class="text-btn__label">Текст</span>
-          </button>
-        </div>
-
-        <hr class="playlist-sep" aria-hidden="true" />
-
         <section id="playlist-section" class="playlist-block" aria-label="Список треків">
           <div id="playlist" class="list" role="list"></div>
         </section>
@@ -52,7 +37,22 @@
         <div class="dock-seek-wrap">
           <input id="seek" class="dock-seek" type="range" min="0" max="1000" value="0" step="1" />
         </div>
+        <div class="dock-info">
+          <div class="dock-cover-wrap">
+          <img id="dock-cover" class="dock-cover" alt="" width="52" height="52" />
+          </div>
 
+          <div class="title-line">
+            <div class="title-line__text">
+              <p id="np-title" class="np-title">—</p>
+              <p id="np-artist" class="np-artist">—</p>
+            </div>
+            <button id="btn-lyrics-now" type="button" class="text-btn" aria-label="Текст пісні">
+              <svg class="text-btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                <path d="M8 6h13M8 12h13M8 18h9" />
+              </svg>
+            </button>
+          </div>
         <div class="dock-transport">
           <button id="btn-prev" class="dock-btn" type="button" aria-label="Попередня пісня">
             <svg class="dock-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -70,6 +70,8 @@
             </svg>
           </button>
         </div>
+        
+      </div>
       </footer>
     </div>
 
