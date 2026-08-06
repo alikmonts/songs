@@ -1,4 +1,4 @@
-const CACHE = "arisongs-v9";
+const CACHE = "arisongs-v10";
 
 const PRECACHE_URLS = [
   "./index.html",
@@ -46,10 +46,29 @@ self.addEventListener("fetch", (event) => {
     url.pathname.endsWith(".ogg") ||
     (url.pathname.includes("/media/") && url.pathname.endsWith(".bin"));
 
-  /* Аудіо завжди з мережі, щоб не закешувати зламану відповідь і не ламати перший трек */
+  /* Аудіо: мережа + кеш, щоб наступний трек був готовий на lock screen */
   if (isAudio) {
     event.respondWith(
-      fetch(request).catch(() => caches.match(request))
+      caches.open(CACHE).then(async (cache) => {
+        const cached = await cache.match(request);
+        const network = fetch(request)
+          .then((response) => {
+            if (response && response.ok) {
+              cache.put(request, response.clone());
+            }
+            return response;
+          })
+          .catch(() => null);
+        if (cached) {
+          network.then((response) => {
+            if (response?.ok) cache.put(request, response.clone());
+          });
+          return cached;
+        }
+        const response = await network;
+        if (response) return response;
+        return caches.match(request);
+      })
     );
     return;
   }

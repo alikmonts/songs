@@ -12,6 +12,9 @@ let countedThisRound = false;
 let lastPositionSyncMs = 0;
 /** Після fetch обфускованого .bin — відкликати при зміні треку. */
 let audioObjectUrl = null;
+/** @type {Map<string, { objectUrl: string }>} */
+const preloadedAudio = new Map();
+let pendingAutoAdvance = false;
 
 const audio = document.getElementById("audio");
 const cover = document.getElementById("cover");
@@ -262,34 +265,39 @@ function registerMediaSessionActionHandlers() {
  * Негайний play() після load() зберігає ланцюг user gesture на iOS.
  */
 function playWhenAudioReady(resetTime) {
-  let settled = false;
-  const cleanup = () => {
-    audio.removeEventListener("loadedmetadata", tryPlay);
-    audio.removeEventListener("canplay", tryPlay);
-    clearTimeout(fallbackTimer);
-  };
-  const onPlayed = () => {
-    if (settled) return;
-    settled = true;
-    cleanup();
-    syncPlaybackState();
-    syncMediaSessionPosition();
-  };
-  const tryPlay = () => {
-    if (settled) return;
-    if (resetTime) audio.currentTime = 0;
-    const p = audio.play();
-    if (p !== undefined) {
-      p.then(onPlayed).catch(() => {});
-    } else {
-      onPlayed();
-    }
-  };
-  audio.addEventListener("loadedmetadata", tryPlay);
-  audio.addEventListener("canplay", tryPlay);
-  const fallbackTimer = setTimeout(() => tryPlay(), 2200);
-  audio.load();
-  tryPlay();
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (ok) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      if (ok) {
+        syncPlaybackState();
+        syncMediaSessionPosition();
+      }
+      resolve(ok);
+    };
+    const cleanup = () => {
+      audio.removeEventListener("loadedmetadata", tryPlay);
+      audio.removeEventListener("canplay", tryPlay);
+      clearTimeout(fallbackTimer);
+    };
+    const tryPlay = () => {
+      if (settled) return;
+      if (resetTime) audio.currentTime = 0;
+      const p = audio.play();
+      if (p !== undefined) {
+        p.then(() => finish(true)).catch(() => finish(false));
+      } else {
+        finish(true);
+      }
+    };
+    audio.addEventListener("loadedmetadata", tryPlay);
+    audio.addEventListener("canplay", tryPlay);
+    const fallbackTimer = setTimeout(() => tryPlay(), 2200);
+    audio.load();
+    tryPlay();
+  });
 }
 
 const PLAYING_ICON_SVG = `<svg class="track__thumb-svg" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>`;
@@ -364,6 +372,52 @@ function closeLyrics() {
   modalRoot.classList.add("hidden");
 }
 
+function releaseAudioObjectUrl() {
+  if (!audioObjectUrl) return;
+  URL.revokeObjectURL(audioObjectUrl);
+  audioObjectUrl = null;
+}
+
+async function fetchTrackBlob(track) {
+  const rel = String(track.file);
+  const mime = typeof track.mime === "string" && track.mime ? track.mime : "audio/mpeg";
+  const url = assetUrl(rel);
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("audio fetch");
+  const buf = await res.arrayBuffer();
+  return new Blob([buf], { type: mime });
+}
+
+function trimPreloadCache(keepIds) {
+  const keep = new Set(keepIds.filter(Boolean));
+  for (const [id, entry] of preloadedAudio) {
+    if (keep.has(id)) continue;
+    URL.revokeObjectURL(entry.objectUrl);
+    preloadedAudio.delete(id);
+  }
+}
+
+async function preloadTrack(track) {
+  if (!track?.id || preloadedAudio.has(track.id)) return;
+  if (/\.(mp3|m4a|ogg)$/i.test(String(track.file || ""))) return;
+  try {
+    const blob = await fetchTrackBlob(track);
+    preloadedAudio.set(track.id, { objectUrl: URL.createObjectURL(blob) });
+  } catch {
+    /* ignore */
+  }
+}
+
+function preloadAdjacentTracks() {
+  const tracks = data.tracks;
+  if (!tracks.length) return;
+  const next = tracks[(idx + 1) % tracks.length];
+  const prev = tracks[(idx - 1 + tracks.length) % tracks.length];
+  trimPreloadCache([next?.id, prev?.id]);
+  preloadTrack(next);
+  if (prev?.id && prev.id !== next?.id) preloadTrack(prev);
+}
+
 /**
  * Джерела з build: media/<sha32>.bin (байти як у mp3, ім’я не видає формат).
  * Старі tracks.json з mp3/ — лишаємо прямий src.
@@ -371,34 +425,34 @@ function closeLyrics() {
 async function loadTrackSource(track) {
   if (!track || !track.file) return;
   const rel = String(track.file);
-  const mime = typeof track.mime === "string" && track.mime ? track.mime : "audio/mpeg";
   if (/\.(mp3|m4a|ogg)$/i.test(rel)) {
-    if (audioObjectUrl) {
-      URL.revokeObjectURL(audioObjectUrl);
-      audioObjectUrl = null;
-    }
+    releaseAudioObjectUrl();
     audio.src = assetUrl(rel);
     return;
   }
-  const url = assetUrl(rel);
-  const res = await fetch(url);
-  if (!res.ok) {
+  const cached = track.id ? preloadedAudio.get(track.id) : null;
+  if (cached) {
+    releaseAudioObjectUrl();
+    preloadedAudio.delete(track.id);
+    audioObjectUrl = cached.objectUrl;
+    audio.src = audioObjectUrl;
+    return;
+  }
+  let blob;
+  try {
+    blob = await fetchTrackBlob(track);
+  } catch {
     npTitle.textContent = `${track.title} (помилка завантаження)`;
     throw new Error("audio fetch");
   }
-  const buf = await res.arrayBuffer();
-  if (audioObjectUrl) {
-    URL.revokeObjectURL(audioObjectUrl);
-    audioObjectUrl = null;
-  }
-  const blob = new Blob([buf], { type: mime });
+  releaseAudioObjectUrl();
   audioObjectUrl = URL.createObjectURL(blob);
   audio.src = audioObjectUrl;
 }
 
-async function playIndex(i) {
+async function playIndex(i, { autoAdvance = false } = {}) {
   const tracks = data.tracks;
-  if (!tracks.length) return;
+  if (!tracks.length) return false;
   idx = (i + tracks.length) % tracks.length;
   const tr = tracks[idx];
   resetListenMeter();
@@ -407,14 +461,41 @@ async function playIndex(i) {
     await loadTrackSource(tr);
   } catch {
     renderPlaylist();
-    return;
+    if (autoAdvance) pendingAutoAdvance = true;
+    return false;
   }
   renderPlaylist();
-  playWhenAudioReady(true);
+  const ok = await playWhenAudioReady(true);
+  if (!ok) {
+    if (autoAdvance) pendingAutoAdvance = true;
+    return false;
+  }
+  pendingAutoAdvance = false;
+  preloadAdjacentTracks();
+  return true;
 }
 
-function nextTrack() {
-  playIndex(idx + 1);
+async function resumePendingAutoAdvance() {
+  const tr = currentTrack();
+  if (!tr) return;
+  setUiForTrack(tr, { withCover: false });
+  try {
+    if (!audio.src && !audio.currentSrc) await loadTrackSource(tr);
+  } catch {
+    pendingAutoAdvance = true;
+    return;
+  }
+  const ok = await playWhenAudioReady(true);
+  if (ok) {
+    pendingAutoAdvance = false;
+    preloadAdjacentTracks();
+  } else {
+    pendingAutoAdvance = true;
+  }
+}
+
+function nextTrack(autoAdvance = false) {
+  playIndex(idx + 1, { autoAdvance });
 }
 
 function prevTrack() {
@@ -590,6 +671,7 @@ function wire() {
     lastTickTime = audio.currentTime;
     updatePlayButton();
     syncPlaybackState();
+    preloadAdjacentTracks();
   });
 
   audio.addEventListener("pause", () => {
@@ -611,7 +693,7 @@ function wire() {
 
   audio.addEventListener("ended", () => {
     resetListenMeter();
-    nextTrack();
+    nextTrack(true);
   });
 
   audio.addEventListener("loadedmetadata", () => {
@@ -638,7 +720,11 @@ function wire() {
   });
 
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") saveStateSoon();
+    if (document.visibilityState === "hidden") {
+      saveStateSoon();
+      return;
+    }
+    if (pendingAutoAdvance) resumePendingAutoAdvance();
   });
 }
 
@@ -669,6 +755,7 @@ async function boot() {
   setUiForTrack(data.tracks[idx]);
   renderPlaylist();
   updatePlayButton();
+  preloadAdjacentTracks();
 
   seek.value = 0;
   tCur.textContent = "0:00";
