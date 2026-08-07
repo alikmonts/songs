@@ -1,6 +1,8 @@
 const STATE_KEY = "arisongs_player_v1";
 const COUNTS_KEY = "papoule_listen_counts_v1";
 const THRESHOLD_SEC = 15;
+/** Встав сюди URL з Deploy → Web app (Apps Script). Порожній рядок — логування вимкнене. */
+const STATS_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwPvJ77pcc2SSlTp2mi7BgvAG2UVc_DKJgsr-OF4jXzSWvTYXxydTIiqrRYy1Qx2G9t/exec";
 
 /** @type {{ tracks: Array<Record<string, unknown>> }} */
 let data = { tracks: [] };
@@ -86,6 +88,33 @@ function bumpCount(id) {
   saveCounts(m);
 }
 
+/**
+ * geojs.io — безкоштовний, без ключів і реєстрації, з CORS. Менш відомий за ipapi.co,
+ * тому рідше потрапляє у списки блокувальників трекерів (Brave/uBlock тощо).
+ */
+function detectCountry() {
+  return fetch("https://get.geojs.io/v1/ip/country.json")
+    .then((r) => r.json())
+    .then((d) => (d && d.country) || "Unknown")
+    .catch(() => "Unknown");
+}
+
+/** Best-effort фонове логування: помилки ігноруємо, на відтворення не впливає. */
+function reportListen(track) {
+  if (!STATS_WEBHOOK_URL || !track) return;
+  detectCountry()
+    .then((country) =>
+      fetch(STATS_WEBHOOK_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ track: track.title, country }),
+      })
+    )
+    .catch(() => {
+      /* ignore */
+    });
+}
+
 function loadState() {
   try {
     const raw = localStorage.getItem(STATE_KEY);
@@ -128,7 +157,10 @@ function onTimeUpdateMeter() {
   listenedSec += d;
   if (!countedThisRound && listenedSec >= THRESHOLD_SEC) {
     const t = currentTrack();
-    if (t) bumpCount(t.id);
+    if (t) {
+      bumpCount(t.id);
+      reportListen(t);
+    }
     countedThisRound = true;
   }
 }
