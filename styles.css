@@ -514,11 +514,17 @@ body {
 @media (min-width: 768px) and (orientation: landscape) and (min-height: 500px) {
   .scroll-main {
     display: flex;
-    padding: max(36px, env(safe-area-inset-top)) 36px calc(var(--dock-wide-h) + env(safe-area-inset-bottom) + 8px);
+    padding: max(36px, env(safe-area-inset-top)) 36px calc(var(--dock-wide-h) + env(safe-area-inset-bottom) + 36px);
   }
 
   .cover-wrap {
-    width: 60vw;
+    width: auto;
+    height: calc(
+      100dvh - max(36px, env(safe-area-inset-top)) - var(--dock-wide-h) -
+        env(safe-area-inset-bottom) - 36px
+    );
+    max-width: 60vw;
+    flex-shrink: 0;
     margin: 0;
   }
 
@@ -532,7 +538,8 @@ body {
   }
 
   .playlist-block {
-    min-width: 40vw;
+    flex: 1;
+    min-width: 0;
     padding: 0 0 0 36px;
     margin-top: 0;
   }
@@ -543,11 +550,17 @@ body {
   .scroll-main {
     display: flex;
     flex-direction: column;
-    padding: max(36px, env(safe-area-inset-top)) 36px calc(var(--dock-wide-h) + env(safe-area-inset-bottom) + 8px);
+    padding: max(36px, env(safe-area-inset-top)) 36px calc(var(--dock-wide-h) + env(safe-area-inset-bottom) + 36px);
   }
 
   .cover-wrap {
-    width: 60vw;
+    width: min(
+      60vw,
+      calc(
+        100dvh - max(36px, env(safe-area-inset-top)) - var(--dock-wide-h) -
+          env(safe-area-inset-bottom) - 36px - 36px
+      )
+    );
     margin: 0 auto 36px;
   }
 
