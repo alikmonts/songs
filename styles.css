@@ -6,6 +6,7 @@
   --muted: rgba(255, 255, 255, 0.55);
   --dock-yellow: #ffe00e;
   --dock-h: 146px;
+  --dock-wide-h: 78px;
   --seek-bg: #ec820c;
 
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, sans-serif;
@@ -514,6 +515,7 @@ body {
   .scroll-main {
     display: flex;
     padding: 36px;
+    padding: max(12px, env(safe-area-inset-top)) 18px calc(var(--dock-wide-h) + env(safe-area-inset-bottom) + 8px);
   }
 
   .cover-wrap {
@@ -543,6 +545,7 @@ body {
     display: flex;
     flex-direction: column;
     padding: 36px;
+    padding: max(12px, env(safe-area-inset-top)) 18px calc(var(--dock-wide-h) + env(safe-area-inset-bottom) + 8px);
   }
 
   .cover-wrap {
@@ -567,7 +570,7 @@ body {
 
 @media (orientation: landscape) and (max-height: 499px) {
   .scroll-main {
-    padding: 0 0 0 calc(100dvh - var(--dock-h) - env(safe-area-inset-bottom));
+    padding: 0 0 0 calc(100dvh - var(--dock-wide-h) - env(safe-area-inset-bottom));
     min-height: 100dvh;
     box-sizing: border-box;
   }
@@ -576,7 +579,7 @@ body {
     position: fixed;
     top: 24px;
     left: 24px;
-    bottom: calc(var(--dock-h) + env(safe-area-inset-bottom) + 24px);
+    bottom: calc(var(--dock-wide-h) + env(safe-area-inset-bottom) + 24px);
     width: auto;
     height: auto;
     aspect-ratio: 1;
@@ -595,7 +598,7 @@ body {
 
   .playlist-block {
     margin-top: 0;
-    padding: 24px 24px calc(var(--dock-h) + env(safe-area-inset-bottom) + 24px) 0;
+    padding: 24px 24px calc(var(--dock-wide-h) + env(safe-area-inset-bottom) + 24px) 0;
     max-height: 100dvh;
     overflow-y: auto;
     box-sizing: border-box;
